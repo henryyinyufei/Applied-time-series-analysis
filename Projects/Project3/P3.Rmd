@@ -1,0 +1,88 @@
+---
+title: ''
+output: pdf_document
+---
+
+# Prediction
+
+## (a)
+
+```{r}
+set.seed(485)
+y = arima.sim(model = list(order = c(4, 0, 0),
+                           ar = c(0.8, 0.2, -0.2, -0.1)),
+               n = 200,
+               rand.gen = rnorm,
+               sd = 1)
+plot.ts(y,
+        col = "red",
+        type = "l",
+        main = "AR(4) with phi = 0.8, 0.2, -0.2, -0.1 versus time",
+        xlab = "t",
+        ylab = expression(X[t]))
+points(y,
+       pch = 16, col = "lightseagreen",)
+```
+
+\bigskip
+
+## (b)
+
+```{r}
+AR.acf = acf(y, lag.max = 40, plot = F)
+plot(AR.acf, main = "")
+title( "Sample ACF ",line=0.5)
+```
+
+\bigskip
+
+We observed many values of $\hat{\rho}$ fall outside the horizontal dash line, so we have evidence against the null hypothesis that $\rho$ is 0. In other words, there are significant linear dependencies lags greater than 1. 
+
+\bigskip
+
+## (c)
+
+```{r}
+est = arima(y, order = c(4,0,0))
+est$coef
+```
+
+```{r}
+predy = vector("numeric", 200)
+predy[1:4] = NA
+for(t in 5:200){
+  predy[t] = est$coef[1]*y[t-1] + est$coef[2]*y[t-2] + 
+    est$coef[3]*y[t-3] + est$coef[4]*y[t-4]
+}
+```
+
+```{r, fig.width=7.5}
+par(mar=c(5.1, 4.1, 4.1, 10.1), xpd=TRUE)
+plot(y, type = 'o', col = 'red',
+     ylab = 'Values and Predicted Values',
+     main = 'A plot of AR(4) model along with one-step predictions')
+lines(predy, type = 'o', col = 'blue')
+legend(x = 'topright', inset=c(-0.42,0), col = c('red','blue'), 
+       lty = c(1,1), pch = c(1,1), c('Actual Values','Predicted Values'))
+```
+
+\bigskip
+
+## (d)
+```{r}
+AR.pred = predict(est, n.ahead = 10)
+plot.ts(y,
+        xlim = c(0,230),
+        col = "lightgreen",
+        type = "l",
+        main = "A plot of the realization of the AR(4) model 
+        along with predicted future values",
+        xlab = "t",
+        ylab = expression(X[t]))
+points(y,
+       pch = 20, col = "blue",)
+lines(AR.pred$pred, col = 'red')
+points(AR.pred$pred,
+       pch = 20, col = 'purple')
+```
+
