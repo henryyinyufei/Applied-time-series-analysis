@@ -1,0 +1,470 @@
+---
+title: ''
+output: pdf_document
+---
+
+```{r, warning=FALSE, message=FALSE, echo = FALSE}
+library(TSA)
+library(itsmr)
+```
+
+
+# 2. Part 1: Determination of d.
+
+## (a) Present a plot of the original data.
+
+```{r, echo = FALSE}
+so2 = read.table('so2.txt')
+plot(so2$V1, type = 'l', col = 'green',
+     xlab = 'Time', ylab = 'Atmospheric sulfur dioxide levels',
+     main = 'Data versus time')
+points(so2$V1, pch = 20, col = 'red')
+```
+\bigskip
+
+## (b) Make observations about possible trends.
+
+There seems to have a downward trend.
+
+\bigskip
+
+## (c) Report the results of the least squares polynomial fit and the relative sizes of coefficients.
+
+```{r, echo = FALSE}
+time = 1:508
+polyfit = lm(so2$V1 ~ time + I(time^2))
+coef(polyfit)
+```
+
+a least squares estimate for a polynomial model 
+$$a_0 + a_1t + a_2t^2$$
+$a_0 =  3.600651$, $a_1 = -1.761490 \times10^{-3}$, $a_2 = -3.569062\times10^{-6}$.
+
+\bigskip
+
+## (d) Specify d and explain your choice.
+
+The coefficient $a_2$ is $-3.569062\times10^{-6}$ which is relatively small, so i think a linear model is more appropriate. In other words, we can differencing the data once to remove the linear trend, so d = 1.
+
+\bigskip 
+
+## (e) For the chosen d, display a plot of the mean-centered differenced data.
+
+```{r, echo = FALSE}
+# differencing
+diffso2 = diff(so2$V1)
+# mean - centered
+diffso2 = diffso2 - mean(diffso2)
+
+plot(x = 2:508, y = diffso2,
+     type = 'l', col = 'green',
+     xlab = 'Time', ylab = expression(paste(nabla,X[t])),
+     main = 'Differenced data versus time')
+points(x = 2:508, y = diffso2, 
+       pch = 20, col = 'red')
+```
+
+\bigskip
+
+# 3. Part 2: Determination of p and q for the mean-centered differenced data.
+
+## (a) Show the plot of the sample acf/pacf for the mean-centered differenced data.
+
+```{r, echo = FALSE}
+par(mfrow = c(1,2))
+sampleacf = stats::acf(diffso2, lag.max = 40, plot = F)
+plot(sampleacf, main = "", col = 'green')
+title("Sample ACF",line=0.5)
+
+samplepacf = stats::pacf(diffso2, lag.max = 40, plot = F)
+plot(samplepacf, main = "", col = 'green')
+title("Sample PACF", line=0.5)
+```
+\bigskip
+
+## (b) Give observations on possible orders of dependency.
+
+The acf is significantly nonzero at lag 4 and almost insignificant after lag 4 while there seems an exponential decay in pacf values for small increasing lags, so we might try an MA(4) model as an initial guess.
+
+\bigskip
+
+## (c) For the ARMA(p, q) estimated using MLE, show plots of the model acf/pacf values together with the sample acf/pacf and plots of the model residuals for four choices of p and q.
+
+```{r, echo = FALSE}
+p = 0:4
+q = 0:4
+order = matrix(NA, nrow = length(p)*length(q), ncol = 1)
+parms = expand.grid(p,q)
+row.names(order) = paste('ARMA(', parms[,2], ',', parms[,1],')')
+colnames(order) = 'AIC'
+
+counter = 1
+for (i in p){
+  for (j in q){
+    # fit model
+    thisfit = stats::arima(diffso2, order = c(i,0,j), method = 'ML',
+                           optim.control = list(maxit = 1000))
+    # coef
+    arcoef = thisfit$coef[0:i]
+    macoef = thisfit$coef[i+1:j]
+    # plot
+    x11()
+    par(mfrow = c(1,3))
+    # acf
+    plot(sampleacf, main = "", col = 'green', lwd = 2)
+    lines(x = 0:40, ARMAacf(ar = arcoef,
+                            ma = macoef,
+                            lag.max = 40), 
+          type = 'h', col = 'red')
+    title(paste("Sample ACF Model ACF ARMA(",i ,",", j, ")"),
+          line=0.5)
+    
+    # pacf
+    plot(samplepacf, main = "", col = 'green', lwd = 2)
+    lines(ARMAacf(ar = arcoef,
+                  ma = macoef, 
+                  lag.max = 40, pacf = TRUE), 
+          type = 'h', col = 'red')
+    title(paste("Sample PACF Model ACF ARMA(",i ,",", j, ")"), 
+          line=0.5)
+    
+    # residual
+    fitresid = rstandard(thisfit)
+    plot(fitresid, type = 'l', col = 'blue',
+         xlab = 'time', ylab = 'Standardized Residuals',
+         main = '')
+    title(paste("Standardized model residuals versus time ARMA(",i ,",", j, ")"))
+    points(fitresid, pch = 20, col = 'red')
+    
+    # aic
+    order[counter,1] = thisfit$aic
+    counter = counter + 1
+  }
+}
+```
+
+
+![MA(4) model](D:/Simon Fraser University\2021 fall\STAT485\Project7\MA4.jpeg)
+
+![ARMA(3,2) model](D:/Simon Fraser University\2021 fall\STAT485\Project7\ARMA32.jpeg)
+
+![ARMA(4,3) model](D:/Simon Fraser University\2021 fall\STAT485\Project7\ARMA43.jpeg)
+
+![ARMA(4,2) model](D:/Simon Fraser University\2021 fall\STAT485\Project7\ARMA42.jpeg)
+
+\newpage
+
+## (d) Give the aic or aicc values for each of the estimated models in (c).
+
+```{r, echo = FALSE}
+df = as.data.frame(order[c(5,18,24,23),])
+colnames(df) = 'AIC'
+df
+```
+\bigskip
+
+## (e) Specify the p and q values you choose and give the reason.
+
+The standardized residuals appear stationary for these 4 models, we observed a good agreement in significant acf values in ARMA(3,2), ARMA(4,3), and ARMA(4,2) models. we observed a good agreement in significant pacf values up to lag 4 in ARMA(3,2) model, up to lag 5 in ARMA(4,2) and ARMA(4,3) models. Moreover, ARMA(4,2) has the minimum AIC values. In conclusion, i would choose p = 4, q = 2. The ARMA(4,2) model.  
+
+\bigskip
+
+# 4. Part 3: Use MLE to fit the ARMA(p, q) model for the chosen p and q and analyze the model.
+
+## (a) Specify p, d, and q.
+
+ARIMA(p, d, q) model with p = 4, d = 1, q = 2.
+
+\bigskip
+
+## (b) Give the estimated coefficients for the MLE fit.
+
+```{r, echo = FALSE}
+arma42fit = stats::arima(diffso2, order = c(4,0,2),
+                         method = 'ML',
+                         optim.control = list(maxit = 1000))
+arma42fit$coef
+```
+
+\bigskip
+
+## (c) Give the value of the AIC or AICC.
+
+```{r, echo = FALSE}
+arma42fit$aic
+```
+
+\bigskip
+
+## (d) Plot the model and sample acf/pacf values together.
+```{r, fig.width=9, echo = FALSE}
+par(mfrow = c(1,2))
+plot(sampleacf, main = "", col = 'green', lwd = 2)
+lines(x = 0:40, ARMAacf(ar = c(6.953413e-01,1.130086e-01,-1.096243e-01,1.319973e-01), 
+                        ma = c(-1.593950e+00,5.939507e-01), lag.max = 40), 
+      type = 'h', col = 'red')
+title("Sample ACF Model ACF ARMA(4,2)",line=0.5)
+
+plot(samplepacf, main = "", col = 'green', lwd = 2)
+lines(ARMAacf(ar = c(6.953413e-01,1.130086e-01,-1.096243e-01,1.319973e-01), 
+              ma = c(-1.593950e+00,5.939507e-01), lag.max = 40, pacf = TRUE), 
+      type = 'h', col = 'red')
+title("Sample PACF Model PACF ARMA(4,2)", line=0.5)
+```
+
+\bigskip
+
+## (e) Use the plot from (d) to assess the quality of the model fit.
+
+We observe a good agreement in significant acf values, and a good agreement in significant pacf values up to lag 5.
+
+\bigskip
+
+## (f) Plot the standardized model residuals.
+
+```{r, echo = FALSE}
+arma42resid = rstandard(arma42fit)
+plot(arma42resid, type = 'l', col = 'blue',
+    xlab = 'time', ylab = 'Standardized Residuals',
+    main = '')
+title("Standardized model residuals versus time ARMA(4,2)")
+points(arma42resid, pch = 20, col = 'red')
+```
+\bigskip
+
+## (g) Plot the sample acf/pacf for the standardized model residuals.
+
+```{r, echo = FALSE}
+par(mfrow = c(1,2))
+arma42residacf = stats::acf(arma42resid, lag.max = 40, plot = F)
+plot(arma42residacf, main = "", col = 'blue')
+title("Residual ACF ARMA(4,2)",line=0.5)
+
+arma42residpacf = stats::pacf(arma42resid, lag.max = 40, plot = F)
+plot(arma42residpacf, main = "", col = 'blue')
+title("Residual PACF ARMA(4,2)", line=0.5)
+```
+\bigskip
+
+## (h) Assess the plots from (f) and (g) with respect to the hypothesis that the model residuals behave like iid noise.
+
+The standardized residual plot appear stationary and the residual acf and pacf plots do not support the rejection of iid noise hypothesis.
+
+\bigskip
+
+## (i) Evaluate the Ljung-Box and McLeod-Li statistics and indicate if they support rejection of the hypothesis that the model residuals behave like iid noise.
+
+```{r, echo = FALSE}
+test(arma42resid)
+```
+
+The Ljung-Box statistic is 15.65 with p-value 0.7384. This fails to support the rejection of iid noise hypothesis.
+
+The McLeod-Li statistic is 53.26 with p-value almost 0. This support the rejection of iid  noise hypothesis.
+
+\bigskip
+
+## (j) Using (h) and (i), give a final assessment on the validity of the hypothesis that the model residuals behave like iid noise.
+
+The residual acf and pacf plots do not support the rejection of iid noise hypothesis, and The Ljung-Box statistic test fails to support the rejection of iid noise hypothesis. In balance, i would conclude that residuals behave like iid noise.
+
+\bigskip
+
+## (k) Use the results from (e) and (j) to give a summary evaluation about the quality of the fitted model.
+
+We observe a good agreement in significant acf values and good agreement in significant pacf values up to lag 5. The standardized residual plot appear stationary, and the residual acf and pacf plots do not support the rejection of iid noise hypothesis. The Ljung-Box statistic test also fails to support the rejection of iid noise hypothesis. Overall, I would conclude that ARMA(4,2) model is a good fit.
+
+\bigskip
+
+# 5. Part 4: Use the estimated model to make a forecast.
+
+## (a) Plot the data together with prediction of values for 10 time steps past the last time of the data together with the confidence bounds.
+
+```{r, message=FALSE, warning=FALSE, echo = FALSE}
+pred = forecast::forecast(arma42fit)
+plot(x = 2:508, y = diffso2,
+     type = 'l', col = 'green',
+     xlim = c(0,530),
+     xlab = 'Time', ylab = expression(paste(nabla,X[t])),
+     main = 'Differenced data versus time with 
+     predicted values and confidence bounds')
+points(x = 2:508, y = diffso2, 
+       pch = 20, col = 'red')
+lines(pred$mean, col = 'blue')
+points(pred$mean, col = 'blue')
+lines(pred$upper[,2], col = 'blue')
+lines(pred$lower[,2], col = 'blue')
+```
+
+\bigskip
+
+# Appendix (code)
+
+```{r, fig.width = 9}
+# load packages
+library(TSA)
+library(itsmr)
+
+# read and plot data
+so2 = read.table('so2.txt')
+plot(so2$V1, type = 'l', col = 'green',
+     xlab = 'Time', ylab = 'Atmospheric sulfur dioxide levels',
+     main = 'Data versus time')
+points(so2$V1, pch = 20, col = 'red')
+
+# polynomial fit
+time = 1:508
+polyfit = lm(so2$V1 ~ time + I(time^2))
+coef(polyfit)
+
+# differencing
+diffso2 = diff(so2$V1)
+# mean - centered
+diffso2 = diffso2 - mean(diffso2)
+
+# plot differenced data
+plot(x = 2:508, y = diffso2,
+     type = 'l', col = 'green',
+     xlab = 'Time', ylab = expression(paste(nabla,X[t])),
+     main = 'Differenced data versus time')
+points(x = 2:508, y = diffso2, 
+       pch = 20, col = 'red')
+
+# Sample ACF and Sample PACF
+par(mfrow = c(1,2))
+sampleacf = stats::acf(diffso2, lag.max = 40, plot = F)
+plot(sampleacf, main = "", col = 'green')
+title("Sample ACF",line=0.5)
+
+samplepacf = stats::pacf(diffso2, lag.max = 40, plot = F)
+plot(samplepacf, main = "", col = 'green')
+title("Sample PACF", line=0.5)
+```
+
+```{r, eval=TRUE}
+# Choose p and q
+p = 0:4          # adjust different p values 
+q = 0:4          # adjust differnt q values
+# container
+order = matrix(NA, nrow = length(p)*length(q), ncol = 1)
+parms = expand.grid(p,q)
+row.names(order) = paste('ARMA(', parms[,2], ',', parms[,1],')')
+colnames(order) = 'AIC'
+
+# for loop
+counter = 1
+for (i in p){
+  for (j in q){
+    # fit model
+    thisfit = stats::arima(diffso2, order = c(i,0,j), method = 'ML',
+                           optim.control = list(maxit = 1000))
+    # coef
+    arcoef = thisfit$coef[0:i]
+    macoef = thisfit$coef[i+1:j]
+    
+    # plot
+    x11()
+    par(mfrow = c(1,3))
+    
+    # acf
+    plot(sampleacf, main = "", col = 'green', lwd = 2)
+    lines(x = 0:40, ARMAacf(ar = arcoef,
+                            ma = macoef,
+                            lag.max = 40), 
+          type = 'h', col = 'red')
+    title(paste("Sample ACF Model ACF ARMA(",i ,",", j, ")"),
+          line=0.5)
+    
+    # pacf
+    plot(samplepacf, main = "", col = 'green', lwd = 2)
+    lines(ARMAacf(ar = arcoef,
+                  ma = macoef, 
+                  lag.max = 40, pacf = TRUE), 
+          type = 'h', col = 'red')
+    title(paste("Sample PACF Model ACF ARMA(",i ,",", j, ")"), 
+          line=0.5)
+    
+    # residual
+    fitresid = rstandard(thisfit)
+    plot(fitresid, type = 'l', col = 'blue',
+         xlab = 'time', ylab = 'Standardized Residuals',
+         main = '')
+    title(paste("Standardized model residuals versus time ARMA(",i ,",", j, ")"))
+    points(fitresid, pch = 20, col = 'red')
+    
+    # aic
+    order[counter,1] = thisfit$aic
+    counter = counter + 1
+  }
+}
+```
+
+```{r, fig.width=9}
+# AIC values for choosed 4 models
+df = as.data.frame(order[c(5,18,24,23),])
+colnames(df) = 'AIC'
+df
+
+# ARMA(4,2) model
+arma42fit = stats::arima(diffso2, order = c(4,0,2),
+                         method = 'ML',
+                         optim.control = list(maxit = 1000))
+# coef
+arma42fit$coef
+
+# AIC
+arma42fit$aic
+
+# ARMA(4,2) sample acf/pacf and model acf/pacf
+par(mfrow = c(1,2))
+plot(sampleacf, main = "", col = 'green', lwd = 2)
+lines(x = 0:40, ARMAacf(ar = c(6.953413e-01,1.130086e-01,-1.096243e-01,1.319973e-01), 
+                        ma = c(-1.593950e+00,5.939507e-01), lag.max = 40), 
+      type = 'h', col = 'red')
+title("Sample ACF Model ACF ARMA(4,2)",line=0.5)
+
+plot(samplepacf, main = "", col = 'green', lwd = 2)
+lines(ARMAacf(ar = c(6.953413e-01,1.130086e-01,-1.096243e-01,1.319973e-01), 
+              ma = c(-1.593950e+00,5.939507e-01), lag.max = 40, pacf = TRUE), 
+      type = 'h', col = 'red')
+title("Sample PACF Model PACF ARMA(4,2)", line=0.5)
+
+# ARMA(4,2) standardized residuals
+par(mfrow = c(1,1))
+arma42resid = rstandard(arma42fit)
+plot(arma42resid, type = 'l', col = 'blue',
+    xlab = 'time', ylab = 'Standardized Residuals',
+    main = '')
+title("Standardized model residuals versus time ARMA(4,2)")
+points(arma42resid, pch = 20, col = 'red')
+
+# ARMA(4,2) Residual acf/pacf 
+par(mfrow = c(1,2))
+arma42residacf = stats::acf(arma42resid, lag.max = 40, plot = F)
+plot(arma42residacf, main = "", col = 'blue')
+title("Residual ACF ARMA(4,2)",line=0.5)
+
+arma42residpacf = stats::pacf(arma42resid, lag.max = 40, plot = F)
+plot(arma42residpacf, main = "", col = 'blue')
+title("Residual PACF ARMA(4,2)", line=0.5)
+
+# ARMA(4,2) Statistic tests
+test(arma42resid)
+
+# plots with predicted value and Confidence bounds
+par(mfrow = c(1,1))
+pred = forecast::forecast(arma42fit)
+plot(x = 2:508, y = diffso2,
+     type = 'l', col = 'green',
+     xlim = c(0,530),
+     xlab = 'Time', ylab = expression(paste(nabla,X[t])),
+     main = 'Differenced data versus time with 
+     predicted values and confidence bounds')
+points(x = 2:508, y = diffso2, 
+       pch = 20, col = 'red')
+lines(pred$mean, col = 'blue')
+points(pred$mean, col = 'blue')
+lines(pred$upper[,2], col = 'blue')
+lines(pred$lower[,2], col = 'blue')
+```
+
