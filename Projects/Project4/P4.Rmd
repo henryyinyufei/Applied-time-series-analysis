@@ -1,0 +1,203 @@
+---
+title: ''
+output: pdf_document
+---
+
+# 1. Least squares estimation
+
+## (a)
+
+### i 
+```{r}
+data = read.table('project4_data.txt')
+time = 1:100
+quad_mdl = lm(data$V1 ~ time + I(time^2))
+coef(quad_mdl)
+```
+
+\bigskip
+
+### ii 
+
+```{r}
+plot(data$V1, type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = expression(X[t]),
+     main = 'Quadtratic model and data versus time')
+points(data$V1, pch = 20, col = 'lightgreen')
+lines(fitted(quad_mdl), col = 'red')
+```
+
+\bigskip
+
+### iii
+
+```{r}
+plot(resid(quad_mdl), type = 'o', col = 'lightgreen',
+     xlab = 't', ylab = 'Residuals',
+     main = 'Residuals versus time (quadratic)')
+```
+
+\bigskip
+
+### iv 
+
+The residuals show trend.
+
+\bigskip
+
+## (b)
+
+### i 
+
+```{r}
+cubic_mdl = lm(data$V1 ~ time + I(time^2) + I(time^3))
+coef(cubic_mdl)
+```
+
+\bigskip
+
+### ii 
+
+```{r}
+plot(data$V1, type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = expression(X[t]),
+     main = 'Cubic model and data versus time')
+points(data$V1, pch = 20, col = 'lightgreen')
+lines(fitted(cubic_mdl), col = 'red')
+```
+
+\bigskip
+
+### iii
+
+```{r}
+plot(resid(cubic_mdl), type = 'o', col = 'lightgreen',
+     xlab = 't', ylab = 'Residuals',
+     main = 'Residuals versus time (cubic)')
+```
+
+\bigskip
+
+### iv
+
+The residuals do not show trend.
+
+\bigskip
+
+## (c)
+
+Cubic trend model is better.
+
+\newpage
+
+# 2. Moving average
+
+## (a)
+
+```{r}
+plot(data$V1, type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = expression(X[t]),
+     main = 'The data and the averaged values with q = 2 versus time')
+points(data$V1, pch = 20, col = 'lightgreen')
+avgval = stats::filter(data$V1, filter = rep(1/5,5), sides = 2)
+lines(avgval, col='red')
+```
+
+\bigskip
+
+## (b)
+
+```{r}
+plot(data$V1[3:100]-avgval[3:100], type = 'o', col='lightgreen', 
+     xlab = 't', ylab = 'Residuals',
+     main = 'Residuals versus time (moving average)')
+```
+
+\bigskip
+
+## (c)
+
+The residuals do not show trend.
+
+\newpage
+
+# 3. Differencing
+
+## (a)
+
+### i
+
+```{r}
+plot(x = 2:100, y = diff(data$V1), type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = expression(X[t]),
+     main = 'First differenced data versus time')
+points(x = 2:100, y = diff(data$V1), pch = 20, col = 'lightgreen')
+```
+
+\bigskip
+
+### ii
+
+I do not think the plot of first order differencing show evidence of trend.
+
+\bigskip
+
+### iii
+
+```{r}
+time = 2:100
+quad_1stdiff = lm(diff(data$V1) ~ time + I(time^2))
+coef(quad_1stdiff)
+```
+
+```{r}
+plot(x = 2:100, y = diff(data$V1), type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = expression(X[t]),
+     main = 'First differenced data and fitted quadratic model versus time')
+points(x = 2:100, y = diff(data$V1), pch = 20, col = 'lightgreen')
+lines(fitted(quad_1stdiff), col = 'red')
+```
+
+\bigskip
+
+This suggest that the first order differencing have trend.
+
+\bigskip
+
+## (b)
+
+### i
+
+```{r}
+plot(x = 3:100, y = diff(data$V1, differences = 2), type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = expression(X[t]),
+     main = 'Second differenced data versus time')
+points(x = 3:100, y = diff(data$V1, differences = 2), pch = 20, col = 'lightgreen')
+```
+
+\bigskip
+
+### ii 
+
+I do not think the plot of second order differencing show evidence of trend.
+
+\bigskip
+
+### iii
+
+```{r}
+time = 3:100
+quad_2nddiff = lm(diff(data$V1, differences = 2) ~ time + I(time^2))
+coef(quad_2nddiff)
+```
+
+```{r}
+plot(x = 3:100, y = diff(data$V1, differences = 2), type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = expression(X[t]),
+     main = 'Second differenced data and fitted quadratic model versus time')
+points(x = 3:100, y = diff(data$V1, differences = 2), pch = 20, col = 'lightgreen')
+lines(fitted(quad_2nddiff), col = 'red')
+```
+\bigskip
+
+This suggest that the second order differencing does not have trend.
