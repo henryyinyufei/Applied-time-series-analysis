@@ -1,0 +1,143 @@
+---
+title: ''
+output: pdf_document
+---
+
+# 1.
+
+```{r}
+data = read.table('project5_data.txt')
+plot(data$V1, type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = expression(X[t]),
+     main = 'Data versus time')
+points(data$V1, pch = 20, col = 'blue')
+```
+\bigskip
+
+We observe an upward trend, and seasonality on a 12 month interval.
+
+\bigskip
+
+# 2. Least square estimation
+
+## (a)
+```{r}
+t = 1:120
+trigest = lm(data$V1 ~ t + cos(pi*t/6) + sin(pi*t/6))
+coef(trigest)
+```
+
+\bigskip
+a least squares estimate for a linear trend model and a single trigonometric polynomial
+$$a_0 + a_1t+b_1cos(\pi t/6) + b_2sin(\pi t/6)$$
+$a_0$ = -1.29642763,
+$a_1$ = 0.02142856, 
+$b_1$ = 0.48893652, and 
+$b_2$ = 0.74596584.
+
+\bigskip
+
+## (b)
+```{r}
+plot(data$V1, type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = expression(X[t]),
+     main = 'Data and estimated model (red) versus time')
+points(data$V1, pch = 20, col = 'blue')
+lines(fitted(trigest), col = 'red')
+```
+
+\bigskip
+
+## (c)
+```{r}
+plot(resid(trigest), type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = 'Residuals',
+     main = 'Residuals versus time')
+points(resid(trigest), pch = 20, col = 'red')
+```
+\bigskip
+
+## (d)
+```{r}
+acf1 = acf(resid(trigest), lag.max = 40, plot = F)
+plot(acf1, main = "")
+title("Sample ACF",line=0.5)
+```
+
+\bigskip
+According to the sample acf plot, we fail to reject the hypothesis that the residuals are samples from an iid time series.
+
+\bigskip
+
+## (e)
+```{r}
+library(itsmr)
+test(resid(trigest))
+```
+\bigskip
+
+$Q_{LB}$ = 10.35 with p-value 0.9614 and $Q_{ML}$ = 21.41 with p-value 0.3731. These do not support rejection of the hypothesis that the residuals are samples from an iid time series.
+
+\bigskip
+
+## (f)
+According to the sample acf plot and statistical tests, they all do not support the rejection of the hypothesis that the residuals are samples from an iid time series, so i would say the residuals are samples from an iid series.
+
+\bigskip
+
+# 3. Differencing
+
+## (a)
+```{r}
+diff_data = diff(data$V1, lag = 12)
+```
+\bigskip
+
+## (b)
+```{r}
+plot(x = 13:120, y = diff_data,
+     type = 'l', col = 'lightgreen',
+     xlab = 't', ylab = expression(paste(nabla[12],X[t])),
+     main = 'Lag 12 differenced data versus time')
+points(x = 13:120, y = diff_data, pch = 20, col = 'red')
+```
+
+\bigskip
+
+## (c)
+
+```{r}
+acf2 = acf(diff_data, lag.max = 40, plot = F)
+plot(acf2, main = "")
+title("Sample ACF",line=0.5)
+```
+\bigskip
+
+According to the sample acf plot, we do not have evidence against the hypothesis that the differenced data are samples from an iid time series. 
+
+\bigskip
+
+## (d)
+```{r}
+test(diff_data)
+```
+\bigskip
+$Q_{LB}$ = 34.68 with p-value 0.0219. This support rejection of the hypothesis that the differenced data are samples from
+an iid time series at level 0.05.
+
+$Q_{ML}$ = 22.86 with p-value 0.2958. This do not support rejection of the hypothesis that the differenced data are samples from an iid time series at level 0.05.
+
+\bigskip
+
+## (e)
+According to the sample acf plot and statistical tests, most of the methods do not support rejection of the hypothesis that the differenced data are samples from an iid time series, so i would concluded that the differenced data are samples from an iid time series.
+
+
+
+
+
+
+
+
+
+
